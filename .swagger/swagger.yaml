@@ -1,0 +1,185 @@
+basePath: /v1
+definitions:
+  error.Error:
+    properties:
+      error:
+        type: string
+    type: object
+  error.Errors:
+    properties:
+      errors:
+        items:
+          type: string
+        type: array
+    type: object
+  habit.JsonHabit:
+    properties:
+      colourHex:
+        type: string
+      description:
+        type: string
+      iconBase64:
+        type: string
+      id:
+        type: string
+      modeType:
+        type: string
+    type: object
+  habit.JsonHabits:
+    properties:
+      habits:
+        items:
+          $ref: '#/definitions/habit.JsonHabit'
+        type: array
+    type: object
+info:
+  contact: {}
+  description: This is the GO backend CRUD REST API for Atomic Habits.
+  title: Atomic Habits Go Backend API
+  version: "0.1"
+paths:
+  /habits:
+    get:
+      consumes:
+      - application/json
+      description: List habits
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/habit.JsonHabits'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/error.Error'
+      summary: List habits
+      tags:
+      - habits
+    post:
+      consumes:
+      - application/json
+      description: Create Habit
+      parameters:
+      - description: JsonHabit
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/habit.JsonHabit'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/error.Error'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/error.Errors'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/error.Error'
+      summary: Create Habit
+      tags:
+      - habits
+  /habits/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete habit
+      parameters:
+      - description: Habit ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/error.Error'
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/error.Error'
+      summary: Delete habit
+      tags:
+      - habits
+    get:
+      consumes:
+      - application/json
+      description: Get habit by ID
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/habit.JsonHabit'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/error.Error'
+      summary: Get single habit
+      tags:
+      - habits
+    put:
+      consumes:
+      - application/json
+      description: Update habit
+      parameters:
+      - description: Habit ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: JsonHabit
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/habit.JsonHabit'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/error.Error'
+        "404":
+          description: Not Found
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/error.Errors'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/error.Error'
+      summary: Update habit
+      tags:
+      - habits
+  /health:
+    get:
+      description: Health check
+      responses:
+        "200":
+          description: OK
+      summary: Health check
+      tags:
+      - health
+swagger: "2.0"
