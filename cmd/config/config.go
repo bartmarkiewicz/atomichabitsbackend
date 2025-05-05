@@ -9,7 +9,7 @@ import (
 
 type Config struct {
 	Server   ServerConfig
-	database DatabaseConfig
+	Database DatabaseConfig
 }
 type ServerConfig struct {
 	Port         int           `env:"SERVER_PORT,required"`

@@ -1,10 +1,24 @@
 package habit
 
 import (
+	"encoding/json"
+	"fmt"
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"net/http"
 )
 
-type API struct{}
+import "gorm.io/gorm"
+
+type Api struct {
+	repository *Repository
+}
+
+func New(db *gorm.DB) *Api {
+	return &Api{
+		repository: NewRepository(db),
+	}
+}
 
 // GetHabit godoc
 //
@@ -17,7 +31,31 @@ type API struct{}
 //	@failure		404 {object}	error.Error
 //	@failure		500	{object}	error.Error
 //	@router			/habits/{id} [get]
-func (a *API) GetHabit(w http.ResponseWriter, r *http.Request) {}
+func (a *Api) GetHabit(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	habit, err := a.repository.GetHabit(id)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if habit == nil {
+		http.Error(w, "Habit not found", http.StatusNotFound)
+		return
+	}
+
+	jsonHabit := habit.ToJson()
+
+	if err := json.NewEncoder(w).Encode(jsonHabit); err != nil {
+		return
+	}
+}
 
 // CreateHabit godoc
 //
@@ -32,7 +70,28 @@ func (a *API) GetHabit(w http.ResponseWriter, r *http.Request) {}
 //	@failure		422	{object}	error.Errors
 //	@failure		500	{object}	error.Error
 //	@router			/habits [post]
-func (a *API) CreateHabit(w http.ResponseWriter, r *http.Request) {}
+func (a *Api) CreateHabit(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Trying to create habit")
+	jsonHabit := &JsonHabit{}
+	if err := json.NewDecoder(r.Body).Decode(jsonHabit); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	newHabit := jsonHabit.ToHabit()
+	newHabit.ID = uuid.New()
+
+	_, err := a.repository.CreateHabit(newHabit)
+
+	if err != nil {
+		return
+	}
+
+	fmt.Println("Created habit")
+
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Location", "/habits/"+newHabit.ID.String())
+}
 
 // GetHabits godoc
 //
@@ -44,7 +103,26 @@ func (a *API) CreateHabit(w http.ResponseWriter, r *http.Request) {}
 //	@success		200	{object}	JsonHabits
 //	@failure		500	{object}	error.Error
 //	@router			/habits [get]
-func (a *API) GetHabits(w http.ResponseWriter, r *http.Request) {}
+func (a *Api) GetHabits(w http.ResponseWriter, r *http.Request) {
+	habits, err := a.repository.GetHabits()
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if len(habits) == 0 {
+		_, err := fmt.Fprint(w, "[]")
+		if err != nil {
+			return
+		}
+	}
+
+	if err := json.NewEncoder(w).Encode(habits); err != nil {
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
 
 // UpdateHabit godoc
 //
@@ -61,7 +139,34 @@ func (a *API) GetHabits(w http.ResponseWriter, r *http.Request) {}
 //	@failure		422	{object}	error.Errors
 //	@failure		500	{object}	error.Error
 //	@router			/habits/{id} [put]
-func (a *API) UpdateHabit(w http.ResponseWriter, r *http.Request) {}
+func (a *Api) UpdateHabit(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	jsonHabit := &JsonHabit{}
+	if err := json.NewDecoder(r.Body).Decode(jsonHabit); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	habit := jsonHabit.ToHabit()
+	habit.ID = id
+
+	rows, err := a.repository.UpdateHabit(habit)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if rows == 0 {
+		http.Error(w, "Habit not found", http.StatusNotFound)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+}
 
 // DeleteHabit godoc
 //
@@ -76,4 +181,20 @@ func (a *API) UpdateHabit(w http.ResponseWriter, r *http.Request) {}
 //	@failure		404
 //	@failure		500	{object}	error.Error
 //	@router			/habits/{id} [delete]
-func (a *API) DeleteHabit(w http.ResponseWriter, r *http.Request) {}
+func (a *Api) DeleteHabit(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		// handle later
+		return
+	}
+
+	rows, err := a.repository.DeleteHabit(id)
+	if err != nil {
+		// handle later
+		return
+	}
+	if rows == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+}

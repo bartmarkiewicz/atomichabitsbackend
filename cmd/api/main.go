@@ -3,6 +3,9 @@ package main
 import (
 	"errors"
 	"fmt"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 	_ "habitgobackend/cmd/api/resource/common/error"
 	"habitgobackend/cmd/api/router"
 	"habitgobackend/cmd/config"
@@ -10,13 +13,32 @@ import (
 	"net/http"
 )
 
+const fmtDBString = "host=%s user=%s password=%s dbname=%s port=%d sslmode=disable"
+
 // @title			Atomic Habits Go Backend API
 // @version		0.1
 // @description	This is the GO backend CRUD REST API for Atomic Habits.
 // @basePath		/v1
 func main() {
 	habitsConfig := config.New()
-	routerConfig := router.New()
+
+	var logLevel gormlogger.LogLevel
+	if habitsConfig.Server.Debug {
+		logLevel = gormlogger.Info
+	} else {
+		logLevel = gormlogger.Error
+	}
+
+	dbString := fmt.Sprintf(fmtDBString, habitsConfig.Database.Host, habitsConfig.Database.Username,
+		habitsConfig.Database.Password,
+		habitsConfig.Database.DatabaseName, habitsConfig.Database.Port)
+	database, err := gorm.Open(postgres.Open(dbString), &gorm.Config{Logger: gormlogger.Default.LogMode(logLevel)})
+	if err != nil {
+		log.Fatal("DB connection start failure")
+		return
+	}
+
+	routerConfig := router.New(database)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", habitsConfig.Server.Port),
@@ -27,7 +49,7 @@ func main() {
 	}
 
 	log.Println("Starting server " + server.Addr)
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal("Server startup failed")
 	}
