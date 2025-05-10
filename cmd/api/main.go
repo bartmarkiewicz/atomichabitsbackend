@@ -6,8 +6,9 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
+	"habitgobackend/cmd/api/config/router"
+	"habitgobackend/cmd/api/config/validation"
 	_ "habitgobackend/cmd/api/resource/common/error"
-	"habitgobackend/cmd/api/router"
 	"habitgobackend/cmd/config"
 	"log"
 	"net/http"
@@ -21,6 +22,7 @@ const fmtDBString = "host=%s user=%s password=%s dbname=%s port=%d sslmode=disab
 // @basePath		/v1
 func main() {
 	habitsConfig := config.New()
+	validator := validation.New()
 
 	var logLevel gormlogger.LogLevel
 	if habitsConfig.Server.Debug {
@@ -38,7 +40,7 @@ func main() {
 		return
 	}
 
-	routerConfig := router.New(database)
+	routerConfig := router.New(database, validator)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", habitsConfig.Server.Port),

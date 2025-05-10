@@ -4,10 +4,10 @@ import "github.com/google/uuid"
 
 type JsonHabit struct {
 	ID          string `json:"id"`
-	Description string `json:"description"`
-	ColourHex   string `json:"colourHex"`
-	IconBase64  string `json:"iconBase64"`
-	ModeType    string `json:"modeType"`
+	Description string `json:"description" validate:"required"`
+	ColourHex   string `json:"colourHex" validate:"required"`
+	IconBase64  string `json:"iconBase64" validate:"required"`
+	ModeType    string `json:"modeType" validate:"required"`
 }
 
 type JsonHabits struct {
