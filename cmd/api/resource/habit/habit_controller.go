@@ -84,6 +84,12 @@ func (a *Api) CreateHabit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := a.validator.Struct(jsonHabit); err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	newHabit := jsonHabit.ToHabit()
 	newHabit.ID = uuid.New()
 
@@ -157,6 +163,12 @@ func (a *Api) UpdateHabit(w http.ResponseWriter, r *http.Request) {
 	jsonHabit := &JsonHabit{}
 	if err := json.NewDecoder(r.Body).Decode(jsonHabit); err != nil {
 		e.ServerError(w, e.JsonDecodeFailure)
+		return
+	}
+
+	if err := a.validator.Struct(jsonHabit); err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 

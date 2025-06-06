@@ -32,8 +32,7 @@ func main() {
 	}
 
 	dbString := fmt.Sprintf(fmtDBString, habitsConfig.Database.Host, habitsConfig.Database.Username,
-		habitsConfig.Database.Password,
-		habitsConfig.Database.DatabaseName, habitsConfig.Database.Port)
+		habitsConfig.Database.Password, habitsConfig.Database.DatabaseName, habitsConfig.Database.Port)
 	database, err := gorm.Open(postgres.Open(dbString), &gorm.Config{Logger: gormlogger.Default.LogMode(logLevel)})
 	if err != nil {
 		log.Fatal("DB connection start failure")

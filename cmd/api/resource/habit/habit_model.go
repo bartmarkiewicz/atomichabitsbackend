@@ -10,10 +10,6 @@ type JsonHabit struct {
 	ModeType    string `json:"modeType" validate:"required"`
 }
 
-type JsonHabits struct {
-	Habits []JsonHabit `json:"habits"`
-}
-
 type Habit struct {
 	ID          uuid.UUID `gorm:"primary_key"`
 	Description string
