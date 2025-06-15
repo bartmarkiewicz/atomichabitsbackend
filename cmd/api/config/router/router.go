@@ -5,8 +5,6 @@ import (
 	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
 	"habitgobackend/cmd/api/resource/habit"
-
-	_ "habitgobackend/cmd/api/resource/habit"
 	"habitgobackend/cmd/api/resource/health"
 )
 
