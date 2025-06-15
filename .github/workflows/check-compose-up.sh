@@ -1,3 +1,5 @@
+#!/bin/bash
+
 echo "Waiting for application to be ready..."
 timeout=5
 counter=0

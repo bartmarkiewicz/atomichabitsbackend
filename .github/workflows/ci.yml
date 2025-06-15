@@ -21,6 +21,9 @@ jobs:
       - name: Run app
         run: docker compose up -d
 
+      - name: Make compose up check executable
+        run: chmod +x ./check-compose-up.sh
+
       - name: Wait for Services to be up
         run: ./check-compose-up.sh
 
