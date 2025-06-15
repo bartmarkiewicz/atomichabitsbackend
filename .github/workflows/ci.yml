@@ -19,7 +19,10 @@ jobs:
           go-version: "1.24.2"
 
       - name: Run app
-        run: docker compose up
+        run: docker compose up -d
+
+      - name: Wait for Services to be up
+        run: ./check-compose-up.sh
 
       - name: Run Tests
         run: go test ./... -cover
@@ -29,6 +32,10 @@ jobs:
 
       - name: Run Gosec (Security Scan)
         run: gosec ./...
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down
 
   style:
     name: Style
