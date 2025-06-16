@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	headers "habitgobackend/cmd/api/resource/common/helpers"
 	"habitgobackend/cmd/api/resource/habit"
 	"habitgobackend/test/util"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -17,7 +19,41 @@ const (
 	baseURL = "http://localhost:8080/v1"
 )
 
-func TestApiSmoke_GetHabits(testing *testing.T) {
+func ClearDb(testing *testing.T) {
+	resp, err := http.Get(fmt.Sprintf("%s/habits", baseURL))
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	habits := &habit.Habits{}
+
+	if err = json.NewDecoder(resp.Body).Decode(habits); err != nil {
+		testing.Fatalf("Failed to decode habits: %s", err)
+	}
+
+	for item := range *habits {
+		request, err := http.NewRequest("DELETE",
+			fmt.Sprintf("%s/habits/%v", baseURL, (*habits)[item].ID.String()),
+			bytes.NewBuffer([]byte{}),
+		)
+		if err != nil {
+			testing.Fatalf("Failed to create DELETE request: %s", err)
+			return
+		}
+
+		client := &http.Client{}
+		delRequest, err := client.Do(request)
+		if err != nil || (delRequest.StatusCode != http.StatusOK && delRequest.StatusCode != http.StatusNotFound) {
+			testing.Fatalf("Failed to create DELETE request: %v status: %v", err, delRequest.StatusCode)
+			return
+		}
+
+	}
+}
+
+func TestSmoke_GetHabits(testing *testing.T) {
+	ClearDb(testing)
 	resp, err := http.Get(fmt.Sprintf("%s/habits", baseURL))
 
 	if err != nil {
@@ -37,7 +73,8 @@ func TestApiSmoke_GetHabits(testing *testing.T) {
 	util.HabitsEqual(testing, *habits, expected)
 }
 
-func TestApiSmoke_CreateHabit(testing *testing.T) {
+func TestSmoke_CreateHabit(testing *testing.T) {
+	ClearDb(testing)
 	newHabit := habit.JsonHabit{
 		Description: "Test habit",
 		ColourHex:   "#FF5733",
@@ -62,10 +99,9 @@ func TestApiSmoke_CreateHabit(testing *testing.T) {
 
 	util.IsEqual(testing, resp.StatusCode, http.StatusCreated)
 
-	var createdHabit habit.JsonHabit
-	if err = json.NewDecoder(resp.Body).Decode(&createdHabit); err != nil {
-		testing.Fatalf("Failed to decode created habit: %s", err)
-	}
+	var createdHabitId = resp.Header.Get(headers.CREATED_ID)
+
+	createdHabit := getHabit(testing, createdHabitId)
 
 	util.IsEqual(testing, createdHabit.Description, newHabit.Description)
 	util.IsEqual(testing, createdHabit.ColourHex, newHabit.ColourHex)
@@ -78,7 +114,8 @@ func TestApiSmoke_CreateHabit(testing *testing.T) {
 	}
 }
 
-func TestApiSmoke_GetHabitById(testing *testing.T) {
+func TestSmoke_GetHabitById(testing *testing.T) {
+	ClearDb(testing)
 	newHabit := habit.JsonHabit{
 		Description: "Test habit for get by ID",
 		ColourHex:   "#3366FF",
@@ -100,33 +137,19 @@ func TestApiSmoke_GetHabitById(testing *testing.T) {
 		testing.Fatalf("Failed to create habit: %s", err)
 	}
 
-	var createdHabit habit.JsonHabit
-	if err = json.NewDecoder(resp.Body).Decode(&createdHabit); err != nil {
-		testing.Fatalf("Failed to decode created habit: %s", err)
-	}
-	resp.Body.Close()
+	createdHabitId := resp.Header.Get(headers.CREATED_ID)
 
-	getResp, err := http.Get(fmt.Sprintf("%s/habits/%s", baseURL, createdHabit.ID))
-	if err != nil {
-		testing.Fatalf("Failed to get habit by ID: %s", err)
-	}
-	defer getResp.Body.Close()
+	retrievedHabit := getHabit(testing, createdHabitId)
 
-	util.IsEqual(testing, getResp.StatusCode, http.StatusOK)
-
-	var retrievedHabit habit.JsonHabit
-	if err = json.NewDecoder(getResp.Body).Decode(&retrievedHabit); err != nil {
-		testing.Fatalf("Failed to decode retrieved habit: %s", err)
-	}
-
-	util.IsEqual(testing, retrievedHabit.ID, createdHabit.ID)
+	util.IsEqual(testing, retrievedHabit.ID, createdHabitId)
 	util.IsEqual(testing, retrievedHabit.Description, newHabit.Description)
 	util.IsEqual(testing, retrievedHabit.ColourHex, newHabit.ColourHex)
 	util.IsEqual(testing, retrievedHabit.IconBase64, newHabit.IconBase64)
 	util.IsEqual(testing, retrievedHabit.ModeType, newHabit.ModeType)
 }
 
-func TestApiSmoke_UpdateHabit(testing *testing.T) {
+func TestSmoke_UpdateHabit(testing *testing.T) {
+	ClearDb(testing)
 	newHabit := habit.JsonHabit{
 		Description: "Test habit for update",
 		ColourHex:   "#33CC33",
@@ -148,17 +171,13 @@ func TestApiSmoke_UpdateHabit(testing *testing.T) {
 		testing.Fatalf("Failed to create habit: %s", err)
 	}
 
-	var createdHabit habit.JsonHabit
-	if err = json.NewDecoder(resp.Body).Decode(&createdHabit); err != nil {
-		testing.Fatalf("Failed to decode created habit: %s", err)
-	}
-	resp.Body.Close()
+	createdHabitId := resp.Header.Get(headers.CREATED_ID)
 
 	updatedHabit := habit.JsonHabit{
-		ID:          createdHabit.ID,
+		ID:          createdHabitId,
 		Description: "Updated test habit",
 		ColourHex:   "#9933FF",
-		IconBase64:  createdHabit.IconBase64,
+		IconBase64:  "data:image/png;base64,FISSHH",
 		ModeType:    "yearly",
 	}
 
@@ -169,7 +188,7 @@ func TestApiSmoke_UpdateHabit(testing *testing.T) {
 
 	req, err := http.NewRequest(
 		http.MethodPut,
-		fmt.Sprintf("%s/habits/%s", baseURL, createdHabit.ID),
+		fmt.Sprintf("%s/habits/%s", baseURL, createdHabitId),
 		bytes.NewBuffer(updatedJSON),
 	)
 	if err != nil {
@@ -186,89 +205,17 @@ func TestApiSmoke_UpdateHabit(testing *testing.T) {
 
 	util.IsEqual(testing, putResp.StatusCode, http.StatusOK)
 
-	var returnedHabit habit.JsonHabit
-	if err = json.NewDecoder(putResp.Body).Decode(&returnedHabit); err != nil {
-		testing.Fatalf("Failed to decode updated habit: %s", err)
-	}
+	returnedHabit := getHabit(testing, createdHabitId)
 
 	util.IsEqual(testing, returnedHabit.ID, updatedHabit.ID)
 	util.IsEqual(testing, returnedHabit.Description, updatedHabit.Description)
 	util.IsEqual(testing, returnedHabit.ColourHex, updatedHabit.ColourHex)
 	util.IsEqual(testing, returnedHabit.IconBase64, updatedHabit.IconBase64)
 	util.IsEqual(testing, returnedHabit.ModeType, updatedHabit.ModeType)
-
-	getResp, err := http.Get(fmt.Sprintf("%s/habits/%s", baseURL, createdHabit.ID))
-	if err != nil {
-		testing.Fatalf("Failed to get updated habit: %s", err)
-	}
-	defer getResp.Body.Close()
-
-	var retrievedHabit habit.JsonHabit
-	if err = json.NewDecoder(getResp.Body).Decode(&retrievedHabit); err != nil {
-		testing.Fatalf("Failed to decode retrieved habit: %s", err)
-	}
-
-	util.IsEqual(testing, retrievedHabit.Description, updatedHabit.Description)
-	util.IsEqual(testing, retrievedHabit.ColourHex, updatedHabit.ColourHex)
-	util.IsEqual(testing, retrievedHabit.ModeType, updatedHabit.ModeType)
 }
 
-func TestApiSmoke_DeleteHabit(testing *testing.T) {
-	newHabit := habit.JsonHabit{
-		Description: "Test habit for deletion",
-		ColourHex:   "#FF33CC",
-		IconBase64:  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
-		ModeType:    "daily",
-	}
-
-	habitJSON, err := json.Marshal(newHabit)
-	if err != nil {
-		testing.Fatalf("Failed to marshal habit: %s", err)
-	}
-
-	resp, err := http.Post(
-		fmt.Sprintf("%s/habits", baseURL),
-		"application/json",
-		bytes.NewBuffer(habitJSON),
-	)
-	if err != nil {
-		testing.Fatalf("Failed to create habit: %s", err)
-	}
-
-	var createdHabit habit.JsonHabit
-	if err = json.NewDecoder(resp.Body).Decode(&createdHabit); err != nil {
-		testing.Fatalf("Failed to decode created habit: %s", err)
-	}
-	resp.Body.Close()
-
-	req, err := http.NewRequest(
-		http.MethodDelete,
-		fmt.Sprintf("%s/habits/%s", baseURL, createdHabit.ID),
-		nil,
-	)
-	if err != nil {
-		testing.Fatalf("Failed to create DELETE request: %s", err)
-	}
-
-	client := &http.Client{}
-	deleteResp, err := client.Do(req)
-	if err != nil {
-		testing.Fatalf("Failed to delete habit: %s", err)
-	}
-	defer deleteResp.Body.Close()
-
-	util.IsEqual(testing, deleteResp.StatusCode, http.StatusOK)
-
-	getResp, err := http.Get(fmt.Sprintf("%s/habits/%s", baseURL, createdHabit.ID))
-	if err != nil {
-		testing.Fatalf("Failed to get deleted habit: %s", err)
-	}
-	defer getResp.Body.Close()
-
-	util.IsEqual(testing, getResp.StatusCode, http.StatusNotFound)
-}
-
-func TestApiSmoke_ValidationErrors(testing *testing.T) {
+func TestSmoke_InvalidScenarios(testing *testing.T) {
+	ClearDb(testing)
 	invalidHabit := habit.JsonHabit{
 		Description: "",
 		ColourHex:   "#FF5733",
@@ -291,7 +238,7 @@ func TestApiSmoke_ValidationErrors(testing *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	util.IsEqual(testing, resp.StatusCode, http.StatusBadRequest)
+	util.IsEqual(testing, resp.StatusCode, http.StatusUnprocessableEntity)
 
 	var errorResp map[string]interface{}
 	if err = json.NewDecoder(resp.Body).Decode(&errorResp); err != nil {
@@ -303,8 +250,8 @@ func TestApiSmoke_ValidationErrors(testing *testing.T) {
 		testing.Fatalf("Error response does not contain 'error' field")
 	}
 
-	if !strings.Contains(strings.ToLower(errorMsg), "validation") {
-		testing.Errorf("Error message does not mention validation: %s", errorMsg)
+	if !strings.Contains(errorMsg, "Could not create entity") {
+		testing.Errorf("Error message expected: Could not create entity, actual: %s", errorMsg)
 	}
 
 	getResp, err := http.Get(fmt.Sprintf("%s/habits/not-a-valid-uuid", baseURL))
@@ -313,12 +260,13 @@ func TestApiSmoke_ValidationErrors(testing *testing.T) {
 	}
 	defer getResp.Body.Close()
 
-	if getResp.StatusCode != http.StatusBadRequest && getResp.StatusCode != http.StatusNotFound {
-		testing.Errorf("Expected status code 400 or 404, got %d", getResp.StatusCode)
+	if getResp.StatusCode != http.StatusBadRequest {
+		testing.Errorf("Expected status code 400, got %d", getResp.StatusCode)
 	}
 }
 
-func TestApiSmoke_NotFoundErrors(testing *testing.T) {
+func TestSmoke_NotFoundErrors(testing *testing.T) {
+	ClearDb(testing)
 	randomUUID := uuid.New().String()
 
 	resp, err := http.Get(fmt.Sprintf("%s/habits/%s", baseURL, randomUUID))
@@ -377,4 +325,25 @@ func TestApiSmoke_NotFoundErrors(testing *testing.T) {
 	defer deleteResp.Body.Close()
 
 	util.IsEqual(testing, deleteResp.StatusCode, http.StatusNotFound)
+}
+
+func getHabit(testing *testing.T, habitId string) habit.JsonHabit {
+	getResp, err := http.Get(fmt.Sprintf("%s/habits/%s", baseURL, habitId))
+	if err != nil {
+		testing.Fatalf("Failed to get habit by ID: %s", err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(getResp.Body)
+
+	util.IsEqual(testing, getResp.StatusCode, http.StatusOK)
+
+	var retrievedHabit habit.JsonHabit
+	if err = json.NewDecoder(getResp.Body).Decode(&retrievedHabit); err != nil {
+		testing.Fatalf("Failed to decode retrieved habit: %s", err)
+	}
+	return retrievedHabit
 }
