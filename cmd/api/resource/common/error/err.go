@@ -1,6 +1,9 @@
 package error
 
-import "net/http"
+import (
+	"fmt"
+	"net/http"
+)
 
 type Error struct {
 	Error string `json:"error"`
@@ -22,20 +25,28 @@ var (
 
 func ServerError(w http.ResponseWriter, reps []byte) {
 	w.WriteHeader(http.StatusInternalServerError)
-	w.Write(reps)
+	writeResponse(reps, w)
 }
 
 func NotFound(w http.ResponseWriter, reps []byte) {
 	w.WriteHeader(http.StatusNotFound)
-	w.Write(reps)
+	writeResponse(reps, w)
 }
 
 func BadRequest(w http.ResponseWriter, reps []byte) {
 	w.WriteHeader(http.StatusBadRequest)
-	w.Write(reps)
+	writeResponse(reps, w)
 }
 
 func ValidationErrors(w http.ResponseWriter, reps []byte) {
 	w.WriteHeader(http.StatusUnprocessableEntity)
-	w.Write(reps)
+	writeResponse(reps, w)
+}
+
+func writeResponse(reps []byte, w http.ResponseWriter) {
+	_, err := w.Write(reps)
+	if err != nil {
+		fmt.Printf("Error writing response: %s", err)
+		return
+	}
 }

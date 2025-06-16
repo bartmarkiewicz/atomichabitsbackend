@@ -5,15 +5,13 @@ import (
 	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
 	"habitgobackend/cmd/api/resource/habit"
-
-	_ "habitgobackend/cmd/api/resource/habit"
 	"habitgobackend/cmd/api/resource/health"
 )
 
 func New(database *gorm.DB, validator *validator.Validate) *chi.Mux {
 	router := chi.NewRouter()
 
-	router.Get("/health", health.HealthCheck)
+	router.Get("/health", health.HealthCheckHandler)
 
 	router.Route("/v1", func(router chi.Router) {
 		habitAPI := habit.New(database, validator)

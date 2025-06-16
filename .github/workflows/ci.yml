@@ -1,0 +1,62 @@
+name: Run Checks on PR
+
+on:
+  pull_request:
+    branches: [master]
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.2"
+
+      - name: Run app
+        run: docker compose up -d
+
+      - name: Make compose up check executable
+        run: chmod +x ./.github/workflows/check-compose-up.sh
+
+      - name: Wait for Services to be up
+        run: ./.github/workflows/check-compose-up.sh
+
+      - name: Run Tests
+        run: go test ./... -cover
+
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+
+      - name: Run Gosec (Security Scan)
+        run: gosec ./...
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down
+
+  style:
+    name: Style
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.2"
+
+      - name: Run Style Checks
+        run: test -z $(go fmt ./...)
+
+      - name: Install staticcheck
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
+
+      - name: Lint Go
+        run: staticcheck ./...

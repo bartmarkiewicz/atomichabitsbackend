@@ -1,0 +1,27 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Run Application Locally" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="habitgobackend" />
+    <working_directory value="$PROJECT_DIR$" />
+    <envs>
+      <env name="DB_DEBUG" value="true" />
+      <env name="DB_HOST" value="localhost" />
+      <env name="DB_NAME" value="habits" />
+      <env name="DB_PASS" value="habits" />
+      <env name="DB_PORT" value="5432" />
+      <env name="DB_USER" value="habits" />
+      <env name="SERVER_DEBUG" value="true" />
+      <env name="SERVER_PORT" value="8080" />
+      <env name="SERVER_TIMEOUT_IDLE" value="5s" />
+      <env name="SERVER_TIMEOUT_READ" value="5s" />
+      <env name="SERVER_TIMEOUT_WRITE" value="5s" />
+    </envs>
+    <kind value="PACKAGE" />
+    <package value="habitgobackend/cmd/api" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$" />
+    <method v="2">
+      <option name="RunConfigurationTask" enabled="true" run_configuration_name="Run DB Container" run_configuration_type="docker-deploy" />
+      <option name="RunConfigurationTask" enabled="true" run_configuration_name="Migrate Up" run_configuration_type="GoApplicationRunConfiguration" />
+    </method>
+  </configuration>
+</component>

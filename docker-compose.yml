@@ -9,6 +9,11 @@ services:
       db:
         condition: service_healthy
     command: [ "sh", "-c", "/habitsgobackend/bin/migrate up && /habitsgobackend/bin/api" ]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
 
   db:
     image: postgres:alpine

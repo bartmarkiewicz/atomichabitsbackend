@@ -16,10 +16,6 @@ import (
 
 const fmtDBString = "host=%s user=%s password=%s dbname=%s port=%d sslmode=disable"
 
-// @title			Atomic Habits Go Backend API
-// @version		0.1
-// @description	This is the GO backend CRUD REST API for Atomic Habits.
-// @basePath		/v1
 func main() {
 	habitsConfig := config.New()
 	validator := validation.New()

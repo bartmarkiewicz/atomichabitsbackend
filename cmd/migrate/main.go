@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"habitgobackend/cmd/config"
@@ -23,7 +24,11 @@ var (
 
 func main() {
 	flags.Usage = usage
-	flags.Parse(os.Args[1:])
+	err := flags.Parse(os.Args[1:])
+	if err != nil {
+		fmt.Printf("Error parsing flags: %v", err)
+		return
+	}
 
 	args := flags.Args()
 	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" {
@@ -39,16 +44,17 @@ func main() {
 
 	db, err := goose.OpenDBWithDriver(dialect, databaseString)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err.Error())
 	}
 
 	defer func() {
 		if err := db.Close(); err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err.Error())
 		}
 	}()
 
-	if err := goose.Run(command, db, *dir, args[1:]...); err != nil {
+	ctx := context.Background()
+	if err := goose.RunContext(ctx, command, db, *dir, args[1:]...); err != nil {
 		log.Fatalf("migrate %v: %v", command, err)
 	}
 }

@@ -39,6 +39,7 @@ func New(db *gorm.DB, validator *validator.Validate) *Api {
 //	@router			/habits/{id} [get]
 func (a *Api) GetHabit(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	fmt.Printf("Id - %v", id.String())
 	if err != nil {
 		e.BadRequest(w, e.InvalidUrlRequest)
 		return
@@ -86,7 +87,7 @@ func (a *Api) CreateHabit(w http.ResponseWriter, r *http.Request) {
 
 	if err := a.validator.Struct(jsonHabit); err != nil {
 		fmt.Println(err)
-		w.WriteHeader(http.StatusBadRequest)
+		e.ValidationErrors(w, e.CreateFailure)
 		return
 	}
 
@@ -100,11 +101,9 @@ func (a *Api) CreateHabit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("Created habit")
-
-	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Location", "/habits/"+newHabit.ID.String())
 	w.Header().Set(headers.CREATED_ID, newHabit.ID.String())
+	w.WriteHeader(http.StatusCreated)
 }
 
 // GetHabits godoc
