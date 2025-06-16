@@ -26,7 +26,7 @@ func main() {
 	flags.Usage = usage
 	err := flags.Parse(os.Args[1:])
 	if err != nil {
-		fmt.Println("Error parsing flags: %v", err)
+		fmt.Printf("Error parsing flags: %v", err)
 		return
 	}
 

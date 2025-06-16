@@ -46,7 +46,7 @@ func ValidationErrors(w http.ResponseWriter, reps []byte) {
 func writeResponse(reps []byte, w http.ResponseWriter) {
 	_, err := w.Write(reps)
 	if err != nil {
-		fmt.Println("Error writing response: %s", err)
+		fmt.Printf("Error writing response: %s", err)
 		return
 	}
 }
